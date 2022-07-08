@@ -12,4 +12,6 @@ public interface CityRepository extends JpaRepository<City, Long> {
     List<City> findAllByCityNameIgnoreCaseContaining(String name);
 
     City findByCityId(Long cityId);
+
+    City findByCityIdAndAreaId(Long cityId, Long areaId);
 }

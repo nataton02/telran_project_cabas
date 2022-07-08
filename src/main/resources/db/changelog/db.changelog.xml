@@ -37,5 +37,47 @@
         </createTable>
     </changeSet>
 
+    <changeSet id="add-new-columns-in-person" author="natalia">
+        <addColumn tableName="person">
+            <column name="first_name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="last_name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="date_of_birth" type="date">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="phone_number" type="varchar(255)">
+
+            </column>
+
+            <column name="email" type="varchar(255)">
+
+            </column>
+
+            <column name="guardian_id" type="bigint">
+                <constraints referencedTableName="person"
+                             referencedColumnNames="person_id"
+                             foreignKeyName="PERSON_GUARDIAN_ID_PERSON_PERSON_ID"/>
+            </column>
+
+            <column name="area_id" type="bigint">
+                <constraints referencedTableName="area"
+                             referencedColumnNames="area_id"
+                             foreignKeyName="PERSON_AREA_ID_AREA_AREA_ID"/>
+            </column>
+
+            <column name="city_id" type="bigint">
+                <constraints referencedTableName="city"
+                             referencedColumnNames="city_id"
+                             foreignKeyName="PERSON_CITY_ID_CITY_CITY_ID"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
 
 </databaseChangeLog>

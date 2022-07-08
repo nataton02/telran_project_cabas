@@ -1,17 +1,19 @@
 package de.telran.telran_project_cabas.dto;
 
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.http.HttpStatus;
 
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Data
 @Builder
-public class ErrorResponseDTO {
+public class PersonUpdateDTO {
 
-    private HttpStatus status;
-    private String message;
+    private String firstName;
+    private String lastName;
+    private String phoneNumber;
+    private String email;
 }
