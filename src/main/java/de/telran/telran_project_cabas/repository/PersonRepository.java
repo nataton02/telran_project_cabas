@@ -12,4 +12,6 @@ public interface PersonRepository extends JpaRepository<Person, Long> {
     boolean existsByPhoneNumber(String phoneNumber);
 
     List<Person> findAllByGuardianId(Long guardianId);
+
+    boolean existsByGuardianId(Long guardianId);
 }

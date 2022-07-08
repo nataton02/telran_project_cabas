@@ -1,5 +1,6 @@
 package de.telran.telran_project_cabas.controller;
 
+import de.telran.telran_project_cabas.dto.PersonGuardianDTO;
 import de.telran.telran_project_cabas.dto.PersonRequestDTO;
 import de.telran.telran_project_cabas.dto.PersonUpdateDTO;
 import de.telran.telran_project_cabas.service.PersonService;
@@ -25,5 +26,12 @@ public class PersonController {
     public void updatePerson(@RequestBody PersonUpdateDTO updateDTO,
                              @PathVariable("id") Long personId) {
         personService.updatePerson(updateDTO, personId);
+    }
+
+    @PostMapping("/api/people/{id}/guardians")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void createGuardian(@RequestBody PersonGuardianDTO guardianDTO,
+                               @PathVariable("id") Long personId) {
+        personService.createGuardian(guardianDTO, personId);
     }
 }

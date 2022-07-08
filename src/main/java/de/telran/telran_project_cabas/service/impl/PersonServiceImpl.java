@@ -1,5 +1,6 @@
 package de.telran.telran_project_cabas.service.impl;
 
+import de.telran.telran_project_cabas.dto.PersonGuardianDTO;
 import de.telran.telran_project_cabas.dto.PersonRequestDTO;
 import de.telran.telran_project_cabas.dto.PersonUpdateDTO;
 import de.telran.telran_project_cabas.entity.City;
@@ -56,7 +57,7 @@ public class PersonServiceImpl implements PersonService {
 
         checkCity(request.getCity_id(), request.getAreaId());
 
-        personRepository.save(convertDtoToPerson(request));
+        personRepository.save(convertPersonDtoToPerson(request));
 
     }
 
@@ -71,6 +72,28 @@ public class PersonServiceImpl implements PersonService {
         personRepository.save(person);
     }
 
+    @Override
+    public void createGuardian(PersonGuardianDTO guardianDTO, Long personId) {
+        Person person = checkPersonExistence(personId);
+
+        if(personRepository.existsByGuardianId(personId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    String.format("The person with id %s is a guardian, so he cannot have a guardian", personId));
+        }
+
+        checkGuardiansAge(guardianDTO.getDateOfBirth());
+
+        Person guardian = convertGuardianDtoToPerson(guardianDTO);
+
+        personRepository.save(guardian);
+
+        person.setGuardianId(guardian.getPersonId());
+
+        personRepository.save(person);
+
+    }
+
 
     private void checkGuardian(PersonRequestDTO request, Long guardianId) {
         Person guardian = personRepository.findById(guardianId)
@@ -79,12 +102,7 @@ public class PersonServiceImpl implements PersonService {
                                 HttpStatus.NOT_FOUND,
                                 String.format("Person with id %s does not exist", guardianId)));
 
-        Period guardiansAge = Period.between(guardian.getDateOfBirth(), LocalDate.now());
-        if (guardiansAge.getYears() < 18) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNPROCESSABLE_ENTITY,
-                    String.format("The person with id %s is to young to be a guardian", guardianId));
-        }
+        checkGuardiansAge(guardian.getDateOfBirth());
 
         if (guardian.getGuardianId() != null) {
             throw new ResponseStatusException(
@@ -96,6 +114,15 @@ public class PersonServiceImpl implements PersonService {
             throw new ResponseStatusException(
                     HttpStatus.UNPROCESSABLE_ENTITY,
                     String.format("The person '%s' must live in the same place as the guardian", request.getFirstName()));
+        }
+    }
+
+    private void checkGuardiansAge(LocalDate dateOfBirth) {
+        Period guardiansAge = Period.between(dateOfBirth, LocalDate.now());
+        if (guardiansAge.getYears() < 18) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    String.format("This person is only %s years old, so he cannot be a guardian", guardiansAge));
         }
     }
 
@@ -116,7 +143,7 @@ public class PersonServiceImpl implements PersonService {
                                 String.format("Person with id %s does not exist", id)));
     }
 
-    private Person convertDtoToPerson(PersonRequestDTO request) {
+    private Person convertPersonDtoToPerson(PersonRequestDTO request) {
         return Person.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
@@ -126,6 +153,16 @@ public class PersonServiceImpl implements PersonService {
                 .guardianId(request.getGuardianId())
                 .areaId(request.getAreaId())
                 .cityId(request.getCity_id())
+                .build();
+    }
+
+    private Person convertGuardianDtoToPerson(PersonGuardianDTO guardianDTO) {
+        return Person.builder()
+                .firstName(guardianDTO.getFirstName())
+                .lastName(guardianDTO.getLastName())
+                .dateOfBirth(guardianDTO.getDateOfBirth())
+                .phoneNumber(guardianDTO.getPhoneNumber())
+                .email(guardianDTO.getEmail())
                 .build();
     }
 }
