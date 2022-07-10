@@ -24,11 +24,13 @@ public class AreaServiceImpl implements AreaService {
     @Autowired
     private CityRepository cityRepository;
 
+    @Transactional
     @Override
     public void createArea(AreaRequestDTO request) {
         areaRepository.save(converterAreaDtoToArea(request));
     }
 
+    @Transactional
     @Override
     public List<AreaResponseDTO> getAreas(String name) {
         if(name == null) {

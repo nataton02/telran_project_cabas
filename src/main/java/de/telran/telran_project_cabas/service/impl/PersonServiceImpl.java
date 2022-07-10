@@ -1,8 +1,6 @@
 package de.telran.telran_project_cabas.service.impl;
 
-import de.telran.telran_project_cabas.dto.PersonGuardianDTO;
-import de.telran.telran_project_cabas.dto.PersonRequestDTO;
-import de.telran.telran_project_cabas.dto.PersonUpdateDTO;
+import de.telran.telran_project_cabas.dto.*;
 import de.telran.telran_project_cabas.entity.City;
 import de.telran.telran_project_cabas.entity.Person;
 import de.telran.telran_project_cabas.repository.CityRepository;
@@ -16,6 +14,8 @@ import org.springframework.web.server.ResponseStatusException;
 import javax.transaction.Transactional;
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.List;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -48,11 +48,21 @@ public class PersonServiceImpl implements PersonService {
         if(personAge.getYears() < 18 && guardianId == null) {
             throw new ResponseStatusException(
                     HttpStatus.UNPROCESSABLE_ENTITY,
-                    String.format("The person '%s' is too young not to have a guardian", request.getFirstName()));
+                    "This person is too young not to have a guardian");
         }
 
         if(guardianId != null) {
-            checkGuardian(request, guardianId);
+            Person guardian = checkPersonExistence(guardianId);
+
+            checkGuardiansAge(guardian.getDateOfBirth());
+
+            checkGuardiansExistence(guardian);
+
+            if (!guardian.getAreaId().equals(request.getAreaId()) || !guardian.getCityId().equals(request.getCity_id())) {
+                throw new ResponseStatusException(
+                        HttpStatus.UNPROCESSABLE_ENTITY,
+                        String.format("The person '%s' must live in the same place as the guardian", request.getFirstName()));
+            }
         }
 
         checkCity(request.getCity_id(), request.getAreaId());
@@ -72,6 +82,7 @@ public class PersonServiceImpl implements PersonService {
         personRepository.save(person);
     }
 
+    @Transactional
     @Override
     public void createGuardian(PersonGuardianDTO guardianDTO, Long personId) {
         Person person = checkPersonExistence(personId);
@@ -81,40 +92,74 @@ public class PersonServiceImpl implements PersonService {
                     HttpStatus.UNPROCESSABLE_ENTITY,
                     String.format("The person with id %s is a guardian, so he cannot have a guardian", personId));
         }
+        if(person.getGuardianId() != null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    String.format("The person with id %s already has a guardian", personId));
+        }
 
         checkGuardiansAge(guardianDTO.getDateOfBirth());
+        checkCity(guardianDTO.getCity_id(), guardianDTO.getAreaId());
 
         Person guardian = convertGuardianDtoToPerson(guardianDTO);
 
         personRepository.save(guardian);
 
         person.setGuardianId(guardian.getPersonId());
+        person.setCityId(guardian.getCityId());
+        person.setAreaId(guardianDTO.getAreaId());
 
         personRepository.save(person);
 
     }
 
+    @Transactional
+    @Override
+    public void changeGuardian(ChangeGuardianRequestDTO request) {
+        Long fromGuardianId = request.getFromGuardian();
+        checkPersonExistence(fromGuardianId);
 
-    private void checkGuardian(PersonRequestDTO request, Long guardianId) {
-        Person guardian = personRepository.findById(guardianId)
+        Long toGuardianId = request.getToGuardian();
+        Person toGuardian = checkPersonExistence(toGuardianId);
+        checkGuardiansAge(toGuardian.getDateOfBirth());
+        checkGuardiansExistence(toGuardian);
+
+        List<Long> childrenIdsFromGuardian = getChildrenIdsByGuardian(fromGuardianId);
+
+        List<Long> childrenIdsToMove = request.getChildrenIds();
+        childrenIdsToMove.stream()
+                .map(childId -> {
+                    Person child = checkPersonExistence(childId);
+                    if(!childrenIdsFromGuardian.contains(childId)) {
+                        throw new ResponseStatusException(
+                                HttpStatus.UNPROCESSABLE_ENTITY,
+                                String.format("The person with id %s has no child with id %s",
+                                        fromGuardianId, childId));
+                    }
+                    child.setGuardianId(toGuardianId);
+                    child.setAreaId(toGuardian.getAreaId());
+                    child.setCityId(toGuardian.getCityId());
+                    return child;
+                })
+                .forEach(child -> personRepository.save(child));
+    }
+
+    @Transactional
+    @Override
+    public PersonResponseDTO getPersonById(Long personId) {
+        Person person = checkPersonExistence(personId);
+        List<Long> childrenIds = getChildrenIdsByGuardian(personId);
+
+        return convertPersonToPersonDto(person, childrenIds);
+    }
+
+
+    private Person checkPersonExistence(Long id) {
+        return personRepository.findById(id)
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
-                                String.format("Person with id %s does not exist", guardianId)));
-
-        checkGuardiansAge(guardian.getDateOfBirth());
-
-        if (guardian.getGuardianId() != null) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNPROCESSABLE_ENTITY,
-                    String.format("The person with id %s has a guardian, so he cannot be a guardian", guardianId));
-        }
-
-        if (!guardian.getAreaId().equals(request.getAreaId()) || !guardian.getCityId().equals(request.getCity_id())) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNPROCESSABLE_ENTITY,
-                    String.format("The person '%s' must live in the same place as the guardian", request.getFirstName()));
-        }
+                                String.format("Person with id %s does not exist", id)));
     }
 
     private void checkGuardiansAge(LocalDate dateOfBirth) {
@@ -122,8 +167,23 @@ public class PersonServiceImpl implements PersonService {
         if (guardiansAge.getYears() < 18) {
             throw new ResponseStatusException(
                     HttpStatus.UNPROCESSABLE_ENTITY,
-                    String.format("This person is only %s years old, so he cannot be a guardian", guardiansAge));
+                    String.format("This person is only %s years old, so he cannot be a guardian", guardiansAge.getYears()));
         }
+    }
+
+    private void checkGuardiansExistence(Person guardian) {
+        if(guardian.getGuardianId() != null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "This person has a guardian, so he cannot be a guardian");
+        }
+    }
+
+    private List<Long> getChildrenIdsByGuardian(Long guardianId) {
+        List<Person> children = personRepository.findAllByGuardianId(guardianId);
+        return children.stream()
+                .map(Person::getPersonId)
+                .collect(Collectors.toList());
     }
 
     private void checkCity(Long cityId, Long areaId) {
@@ -133,14 +193,6 @@ public class PersonServiceImpl implements PersonService {
                     HttpStatus.NOT_FOUND,
                     String.format("There is no city with id %s in the area with id %s", cityId, areaId));
         }
-    }
-
-    private Person checkPersonExistence(Long id) {
-        return personRepository.findById(id)
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                String.format("Person with id %s does not exist", id)));
     }
 
     private Person convertPersonDtoToPerson(PersonRequestDTO request) {
@@ -156,6 +208,20 @@ public class PersonServiceImpl implements PersonService {
                 .build();
     }
 
+    private PersonResponseDTO convertPersonToPersonDto(Person person, List<Long> childrenIds) {
+        return PersonResponseDTO.builder()
+                .firstName(person.getFirstName())
+                .lastName(person.getLastName())
+                .dateOfBirth(person.getDateOfBirth())
+                .phoneNumber(person.getPhoneNumber())
+                .email(person.getEmail())
+                .guardian(person.getGuardianId())
+                .children(childrenIds)
+                .areaId(person.getAreaId())
+                .city_id(person.getCityId())
+                .build();
+    }
+
     private Person convertGuardianDtoToPerson(PersonGuardianDTO guardianDTO) {
         return Person.builder()
                 .firstName(guardianDTO.getFirstName())
@@ -163,6 +229,8 @@ public class PersonServiceImpl implements PersonService {
                 .dateOfBirth(guardianDTO.getDateOfBirth())
                 .phoneNumber(guardianDTO.getPhoneNumber())
                 .email(guardianDTO.getEmail())
+                .areaId(guardianDTO.getAreaId())
+                .cityId(guardianDTO.getCity_id())
                 .build();
     }
 }

@@ -1,8 +1,6 @@
 package de.telran.telran_project_cabas.service;
 
-import de.telran.telran_project_cabas.dto.PersonGuardianDTO;
-import de.telran.telran_project_cabas.dto.PersonRequestDTO;
-import de.telran.telran_project_cabas.dto.PersonUpdateDTO;
+import de.telran.telran_project_cabas.dto.*;
 
 
 public interface PersonService {
@@ -11,4 +9,8 @@ public interface PersonService {
     void updatePerson(PersonUpdateDTO updateDTO, Long personId);
 
     void createGuardian(PersonGuardianDTO guardianDTO, Long personId);
+
+    void changeGuardian(ChangeGuardianRequestDTO request);
+
+    PersonResponseDTO getPersonById(Long personId);
 }

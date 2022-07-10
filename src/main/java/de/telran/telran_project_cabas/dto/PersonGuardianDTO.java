@@ -18,4 +18,6 @@ public class PersonGuardianDTO {
     private LocalDate dateOfBirth;
     private String phoneNumber;
     private String email;
+    private Long areaId;
+    private Long city_id;
 }

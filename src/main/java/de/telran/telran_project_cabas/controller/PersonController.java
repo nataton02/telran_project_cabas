@@ -1,8 +1,6 @@
 package de.telran.telran_project_cabas.controller;
 
-import de.telran.telran_project_cabas.dto.PersonGuardianDTO;
-import de.telran.telran_project_cabas.dto.PersonRequestDTO;
-import de.telran.telran_project_cabas.dto.PersonUpdateDTO;
+import de.telran.telran_project_cabas.dto.*;
 import de.telran.telran_project_cabas.service.PersonService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -33,5 +31,15 @@ public class PersonController {
     public void createGuardian(@RequestBody PersonGuardianDTO guardianDTO,
                                @PathVariable("id") Long personId) {
         personService.createGuardian(guardianDTO, personId);
+    }
+
+    @PatchMapping("/api/people/guardians")
+    public void changeGuardian(@RequestBody ChangeGuardianRequestDTO request) {
+        personService.changeGuardian(request);
+    }
+
+    @GetMapping("/api/people/{id}")
+    public PersonResponseDTO getPerson(@PathVariable("id") Long personId) {
+        return personService.getPersonById(personId);
     }
 }

@@ -20,11 +20,13 @@ public class CityServiceImpl implements CityService {
     @Autowired
     private CityRepository cityRepository;
 
+    @Transactional
     @Override
     public void createCity(CityRequestDTO request) {
         cityRepository.save(convertDtoToCity(request));
     }
 
+    @Transactional
     @Override
     public List<CityResponseDTO> getCities(String name) {
         if(name == null) {
@@ -40,6 +42,7 @@ public class CityServiceImpl implements CityService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     @Override
     public CityResponseDTO getCityById(Long cityId) {
         City city = cityRepository.findByCityId(cityId);
