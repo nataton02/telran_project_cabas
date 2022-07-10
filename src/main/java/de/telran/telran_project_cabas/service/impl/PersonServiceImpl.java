@@ -127,21 +127,20 @@ public class PersonServiceImpl implements PersonService {
         List<Long> childrenIdsFromGuardian = getChildrenIdsByGuardian(fromGuardianId);
 
         List<Long> childrenIdsToMove = request.getChildrenIds();
-        childrenIdsToMove.stream()
-                .map(childId -> {
+        childrenIdsToMove.forEach(childId -> {
                     Person child = checkPersonExistence(childId);
                     if(!childrenIdsFromGuardian.contains(childId)) {
                         throw new ResponseStatusException(
                                 HttpStatus.UNPROCESSABLE_ENTITY,
-                                String.format("The person with id %s has no child with id %s",
+                                String.format("The person with id %s hasn't child with id %s",
                                         fromGuardianId, childId));
                     }
                     child.setGuardianId(toGuardianId);
                     child.setAreaId(toGuardian.getAreaId());
                     child.setCityId(toGuardian.getCityId());
-                    return child;
-                })
-                .forEach(child -> personRepository.save(child));
+                    personRepository.save(child);
+                });
+
     }
 
     @Transactional
@@ -151,6 +150,62 @@ public class PersonServiceImpl implements PersonService {
         List<Long> childrenIds = getChildrenIdsByGuardian(personId);
 
         return convertPersonToPersonDto(person, childrenIds);
+    }
+
+    @Transactional
+    @Override
+    public PersonResponseDTO getPersonByEmail(String email) {
+        Person person = personRepository.findByEmail(email);
+        if(person == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    String.format("There is no person with email %s", email));
+        }
+
+        List<Long> childrenIds = getChildrenIdsByGuardian(person.getPersonId());
+
+        return convertPersonToPersonDto(person, childrenIds);
+    }
+
+    @Transactional
+    @Override
+    public void movePerson(PersonMoveRequestDTO request) {
+        Person person = checkPersonExistence(request.getPersonId());
+
+        Long fromCityId = request.getFromCityId();
+        if(!person.getCityId().equals(fromCityId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    String.format("This person doesn't live in the city with id %s", fromCityId));
+        }
+
+        Long toCityId = request.getToCityId();
+        City toCity = cityRepository.findByCityId(toCityId);
+        if(toCity == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    String.format("City with id %s doesn't exist", toCityId));
+        }
+
+        if(person.getGuardianId() != null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "This person has a guardian, so he cannot move without guardian");
+        }
+
+        person.setCityId(toCityId);
+        person.setAreaId(toCity.getAreaId());
+        personRepository.save(person);
+
+        List<Person> children = personRepository.findAllByGuardianId(person.getPersonId());
+
+        if(children != null) {
+            children.forEach(child -> {
+                        child.setCityId(toCityId);
+                        child.setAreaId(toCity.getAreaId());
+                        personRepository.save(child);
+                    });
+        }
     }
 
 

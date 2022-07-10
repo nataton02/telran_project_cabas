@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.constraints.Email;
+
 
 @RestController
 public class PersonController {
@@ -34,6 +36,7 @@ public class PersonController {
     }
 
     @PatchMapping("/api/people/guardians")
+    @ResponseStatus(HttpStatus.CREATED)
     public void changeGuardian(@RequestBody ChangeGuardianRequestDTO request) {
         personService.changeGuardian(request);
     }
@@ -41,5 +44,16 @@ public class PersonController {
     @GetMapping("/api/people/{id}")
     public PersonResponseDTO getPerson(@PathVariable("id") Long personId) {
         return personService.getPersonById(personId);
+    }
+
+    @GetMapping("/api/people")
+    public PersonResponseDTO getPersonByEmail(@Email String email) {
+        return personService.getPersonByEmail(email);
+    }
+
+    @PostMapping("/api/people/move")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void movePerson(@RequestBody PersonMoveRequestDTO request) {
+        personService.movePerson(request);
     }
 }

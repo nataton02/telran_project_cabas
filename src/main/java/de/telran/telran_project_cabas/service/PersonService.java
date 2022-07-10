@@ -13,4 +13,8 @@ public interface PersonService {
     void changeGuardian(ChangeGuardianRequestDTO request);
 
     PersonResponseDTO getPersonById(Long personId);
+
+    PersonResponseDTO getPersonByEmail(String email);
+
+    void movePerson(PersonMoveRequestDTO request);
 }
